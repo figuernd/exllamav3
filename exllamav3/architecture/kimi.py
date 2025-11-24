@@ -183,9 +183,9 @@ class KimiModel(Model):
                     qmap="block.mlp",
                     interm_dtype=torch.half,
                     out_dtype=torch.float,
-                    router_activation=config.moe_router_activation_func,
+                    router_type="ds3",  # DeepSeek-V3 style with sigmoid
                     routed_scaling_factor=config.routed_scaling_factor,
-                    num_expert_group=config.num_expert_group,
+                    n_group=config.num_expert_group,
                     topk_group=config.topk_group,
                     shared_experts=GatedMLP(
                         config=config,
