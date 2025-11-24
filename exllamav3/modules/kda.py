@@ -6,7 +6,7 @@ from ..model.config import Config
 from ..util.tensor import to2
 from . import Module, Linear
 from ..model.model_tp_alloc import TPAllocation
-from .gated_rmsnorm import GatedRMSNorm
+from .rmsnorm import RMSNorm
 from ..cache import CacheableState
 
 """
@@ -260,6 +260,16 @@ class KDA(Module):
         self.q_conv1d = None
         self.k_conv1d = None
         self.v_conv1d = None
+        self.q_conv1d_weight = None
+        self.k_conv1d_weight = None
+        self.v_conv1d_weight = None
+
+        # Output norm
+        self.o_norm = RMSNorm(
+            config, f"{key}.o_norm",
+            rms_norm_eps=rms_norm_eps
+        )
+        self.register_submodule(self.o_norm)
 
         self.caps.update({
             "recurrent_cache": True
@@ -278,43 +288,41 @@ class KDA(Module):
             self.key_dt_bias, self.device, optional=False, allow_bf16=True
         )
 
-        # Create ShortConvolution modules
+        # Load conv weights
+        self.q_conv1d_weight = self.config.stc.get_tensor(
+            f"{self.key}.q_conv1d.weight", self.device, optional=False, allow_bf16=True
+        )
+        self.k_conv1d_weight = self.config.stc.get_tensor(
+            f"{self.key}.k_conv1d.weight", self.device, optional=False, allow_bf16=True
+        )
+        self.v_conv1d_weight = self.config.stc.get_tensor(
+            f"{self.key}.v_conv1d.weight", self.device, optional=False, allow_bf16=True
+        )
+
+        # Create ShortConvolution modules with loaded weights
         if ShortConvolution is not None:
             self.q_conv1d = ShortConvolution(
                 hidden_size=self.projection_size,
                 kernel_size=self.conv_kernel_size,
                 activation='silu',
             ).to(device)
+            self.q_conv1d.weight.data.copy_(self.q_conv1d_weight)
 
             self.k_conv1d = ShortConvolution(
                 hidden_size=self.projection_size,
                 kernel_size=self.conv_kernel_size,
                 activation='silu',
             ).to(device)
+            self.k_conv1d.weight.data.copy_(self.k_conv1d_weight)
 
             self.v_conv1d = ShortConvolution(
                 hidden_size=self.projection_size,
                 kernel_size=self.conv_kernel_size,
                 activation='silu',
             ).to(device)
+            self.v_conv1d.weight.data.copy_(self.v_conv1d_weight)
 
-            # Load conv weights from saved tensors
-            q_conv_weight = self.config.stc.get_tensor(
-                f"{self.key}.q_conv1d.weight", self.device, optional=True, allow_bf16=True
-            )
-            k_conv_weight = self.config.stc.get_tensor(
-                f"{self.key}.k_conv1d.weight", self.device, optional=True, allow_bf16=True
-            )
-            v_conv_weight = self.config.stc.get_tensor(
-                f"{self.key}.v_conv1d.weight", self.device, optional=True, allow_bf16=True
-            )
-
-            if q_conv_weight is not None:
-                self.q_conv1d.weight.data.copy_(q_conv_weight)
-            if k_conv_weight is not None:
-                self.k_conv1d.weight.data.copy_(k_conv_weight)
-            if v_conv_weight is not None:
-                self.v_conv1d.weight.data.copy_(v_conv_weight)
+        self.o_norm.load(device, **kwargs)
 
 
     @override
@@ -324,6 +332,10 @@ class KDA(Module):
         self.q_conv1d = None
         self.k_conv1d = None
         self.v_conv1d = None
+        self.q_conv1d_weight = None
+        self.k_conv1d_weight = None
+        self.v_conv1d_weight = None
+        self.o_norm.unload()
         super().unload()
 
 
@@ -429,15 +441,11 @@ class KDA(Module):
         gate = self.g_b_proj.forward(self.g_a_proj.forward(x, params), params)
         gate = rearrange(gate, '... (h d) -> ... h d', d=self.head_dim)
 
-        # Apply gated norm (using FLA's FusedRMSNormGated)
-        if FusedRMSNormGated is not None:
-            o_norm = FusedRMSNormGated(self.head_dim, eps=self.rms_norm_eps, activation='sigmoid').to(x.device)
-            o = o_norm(o, gate)
-        else:
-            # Fallback: manual gated RMSNorm
-            variance = o.float().pow(2).mean(-1, keepdim=True)
-            o = o * torch.rsqrt(variance + self.rms_norm_eps)
-            o = o * gate.sigmoid()
+        # Apply output norm with gating
+        # Note: o is shape (bsz, seqlen, num_heads, head_dim)
+        # We need to normalize per head, then apply gate
+        o = self.o_norm.forward(o, params, out_dtype=torch.half)
+        o = o * gate.sigmoid()
 
         # Reshape and output projection
         o = rearrange(o, 'b t h d -> b t (h d)')
