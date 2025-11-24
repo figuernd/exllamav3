@@ -27,7 +27,7 @@ print(f"  Using GPU split: {gpu_split}")
 print(f"  Total VRAM: {sum(gpu_split)}GB across {len(gpu_split)} GPUs")
 
 try:
-    model.load(split=gpu_split, progress=True)
+    model.load(use_per_device=gpu_split, progressbar=True)
     print('✓ Model loaded successfully!')
     print()
 
