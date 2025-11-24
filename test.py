@@ -20,11 +20,14 @@ print()
 print("=" * 60)
 print("Step 2: Loading model weights...")
 print("=" * 60)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print(f"  Using device: {device}")
+
+# Split across 3 L40s (48GB each = 144GB total)
+gpu_split = [47.0, 47.0, 47.0]  # GB per device
+print(f"  Using GPU split: {gpu_split}")
+print(f"  Total VRAM: {sum(gpu_split)}GB across {len(gpu_split)} GPUs")
 
 try:
-    model.load(device)
+    model.load(split=gpu_split, progress=True)
     print('✓ Model loaded successfully!')
     print()
 
