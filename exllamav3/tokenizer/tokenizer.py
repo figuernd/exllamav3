@@ -8,6 +8,7 @@ from ..model.config import Config
 from functools import lru_cache, cached_property
 from typing import TYPE_CHECKING
 from ..util import profile_opt
+from .tiktoken_wrapper import TikTokenizerWrapper
 if TYPE_CHECKING:
     from . import MMEmbedding
 
@@ -45,12 +46,26 @@ class Tokenizer:
         self.path_tokenizer_json = os.path.join(self.config.directory, "tokenizer.json")
         self.path_tokenizer_config_json = os.path.join(self.config.directory, "tokenizer_config.json")
         self.path_added_tokens_json = os.path.join(self.config.directory, "added_tokens.json")
-        self.tokenizer = HFTokenizer.from_file(self.path_tokenizer_json)
-        self.tokenizer_config_dict = maybe_read_json(self.path_tokenizer_config_json)
-        self.added_tokens_dict = maybe_read_json(self.path_added_tokens_json)
+        self.path_tiktoken_model = os.path.join(self.config.directory, "tiktoken.model")
+        self.tokenizer_config_dict = maybe_read_json(self.path_tokenizer_config_json) or {}
+        self.added_tokens_dict = maybe_read_json(self.path_added_tokens_json) or {}
 
-        # Disable truncation
-        self.tokenizer.no_truncation()
+        if os.path.isfile(self.path_tokenizer_json):
+            self.tokenizer = HFTokenizer.from_file(self.path_tokenizer_json)
+            self.tokenizer.no_truncation()
+        elif os.path.isfile(self.path_tiktoken_model):
+            added = self.tokenizer_config_dict.get("added_tokens_decoder", {})
+            self.tokenizer = TikTokenizerWrapper(
+                self.path_tiktoken_model,
+                added_tokens_decoder=added,
+            )
+            self.tokenizer.no_truncation()
+        else:
+            raise FileNotFoundError(
+                f"No tokenizer.json or tiktoken.model found in {self.config.directory}"
+            )
+
+        self.is_tiktoken = os.path.isfile(self.path_tiktoken_model) and not os.path.isfile(self.path_tokenizer_json)
 
         # Deduce placeholders used for space and newline chars in raw vocabulary
         self.space_char_ = " "

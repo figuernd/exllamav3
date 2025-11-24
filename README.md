@@ -37,6 +37,7 @@ The official and recommended backend server for ExLlamaV3 is [TabbyAPI](https://
 - **Gemma 3** (Gemma3ForCausalLM, Gemma3ForConditionalGeneration) *- multimodal*
 - **GLM 4**, **GLM 4.5**, **GLM 4.5-Air**, **GLM 4.6** (Glm4ForCausalLM, Glm4MoeForCausalLM)
 - **GLM 4.1V**, **GLM 4.5V** (Glm4vForConditionalGeneration, Glm4vMoeForConditionalGeneration) *- multimodal*
+- **Kimi Linear** (KimiLinearForCausalLM)
 - **Llama**, **Llama 2**, **Llama 3**, **Llama 3.1-Nemotron** etc. (LlamaForCausalLM)
 - **MiMo-RL** (MiMoForCausalLM)
 - **MiniMax-M2** (MiniMaxM2ForCausalLM)
@@ -114,6 +115,8 @@ Relevant env variables for building:
 - `MAX_JOBS`: by default ninja may launch too many processes and run out of system memory for compilation. Set this to a reasonable value like 4 in that case.  
 - `EXLLAMA_NOCOMPILE`: set to install the library without compiling the C++/CUDA extension. Torch will build/load it at runtime instead.
 
+> Linear-attention models such as **Kimi Linear** and **Qwen3-Next** need [flash-linear-attention (`fla-core`)](https://github.com/fla-org/flash-linear-attention) and the `tiktoken` tokenizer. Both packages are included in `requirements.txt`, so `pip install -r requirements.txt` will pull them in automatically (build tooling for `fla-core` still needs a CUDA-capable toolchain).
+
 
 ## Conversion
 
@@ -147,6 +150,26 @@ python examples/chat.py -m /mnt/models/llama3.1-8b-instruct-exl3 -mode llama3
 
 # Wealth of options
 python examples/chat.py -h
+```
+
+To quickly sanity-check a converted Kimi Linear checkpoint, you can run:
+
+```sh
+python examples/kimi_linear_test.py \
+  --model /path/to/Kimi-Linear-48B-A3B-Instruct-exl3 \
+  --prompt "Summarize the key ideas in three bullet points."
+```
+
+The helper script loads the tokenizer (via `tiktoken`), builds a KV cache sized by `--cache-size`, and generates a short response through the default Kimi chat template.
+
+If you're testing on multiple GPUs (for example, three L40s with 48 GB VRAM each), pass tensor-parallel limits so the load is split evenly:
+
+```sh
+python examples/kimi_linear_test.py \
+  --model /path/to/Kimi-Linear-48B-A3B-Instruct-exl3 \
+  --tensor-parallel \
+  --use-per-device 47 47 47 \
+  --prompt "Give me three fun facts about koalas."
 ```
 
 ## EXL3 quantization
