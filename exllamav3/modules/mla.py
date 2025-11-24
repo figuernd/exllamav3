@@ -64,6 +64,12 @@ class MLA(Module):
         # Scaling factor
         self.sm_scale = self.q_head_dim ** (-0.5)
 
+        # Debug: print dimensions
+        print(f"MLA layer {layer_idx} dimensions:")
+        print(f"  kv_lora_rank: {kv_lora_rank}")
+        print(f"  qk_rope_head_dim: {qk_rope_head_dim}")
+        print(f"  kv_a_proj output: {kv_lora_rank + qk_rope_head_dim}")
+
         # Q projection: outputs (num_q_heads * q_head_dim)
         self.q_proj = Linear(
             config, f"{key}.{key_q}",
