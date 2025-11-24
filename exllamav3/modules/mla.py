@@ -207,6 +207,12 @@ class MLA(Module):
 
         # Compressed KV projection
         compressed_kv = self.kv_a_proj.forward(x, params)
+
+        # Debug: check actual output shape
+        print(f"DEBUG: compressed_kv shape: {compressed_kv.shape}")
+        print(f"DEBUG: Expected: [..., {self.kv_lora_rank + self.qk_rope_head_dim}]")
+        print(f"DEBUG: kv_a_proj.out_features: {self.kv_a_proj.out_features}")
+
         k_compressed, k_rope = torch.split(
             compressed_kv, [self.kv_lora_rank, self.qk_rope_head_dim], dim=-1
         )
