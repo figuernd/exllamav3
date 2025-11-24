@@ -133,9 +133,17 @@ class MLA(Module):
             cl.alloc(device)
 
         if self.rope_settings:
+            # MLA only applies RoPE to qk_rope_head_dim portion
+            # Create custom rope settings with correct rotary dimension
+            from dataclasses import replace
+            mla_rope_settings = replace(
+                self.rope_settings,
+                rotary_dim=self.qk_rope_head_dim,
+                head_dim=self.qk_rope_head_dim
+            )
             self.rope = RoPE(
                 device,
-                self.rope_settings,
+                mla_rope_settings,
             )
 
 
