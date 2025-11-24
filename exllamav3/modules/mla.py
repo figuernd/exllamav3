@@ -118,6 +118,15 @@ class MLA(Module):
         self.has_split_cache = False
 
 
+    @override
+    def optimizer_targets(self):
+        q = self.q_proj.optimizer_targets()
+        kv_a = self.kv_a_proj.optimizer_targets()
+        kv_b = self.kv_b_proj.optimizer_targets()
+        o = self.o_proj.optimizer_targets()
+        return [[q, kv_a + kv_b, o]]
+
+
     def load_local(self, device, **kwargs):
         # Cache
         for cl in self.cache_layers:

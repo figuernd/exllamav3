@@ -277,6 +277,15 @@ class KDA(Module):
 
 
     @override
+    def optimizer_targets(self):
+        q = self.q_proj.optimizer_targets()
+        k = self.k_proj.optimizer_targets()
+        v = self.v_proj.optimizer_targets()
+        o = self.o_proj.optimizer_targets()
+        return [[q, k + v, o]]
+
+
+    @override
     def load(self, device: torch.Device, **kwargs):
         super().load(device)
 
