@@ -1,10 +1,11 @@
-from exllamav3.model_init import init_model
+from exllamav3 import Config, Model
 import torch
 
 print("=" * 60)
 print("Step 1: Initializing model...")
 print("=" * 60)
-model, config = init_model('/srv/data/llm-models/Kimi-Linear-48B-A3B-Instruct')
+config = Config.from_directory('/srv/data/llm-models/Kimi-Linear-48B-A3B-Instruct')
+model = Model.from_config(config)
 print('✓ Model initialized successfully')
 print(f'  Architecture: {config.architecture}')
 print(f'  Config class: {type(config).__name__}')
