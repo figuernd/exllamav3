@@ -6,6 +6,8 @@ from .rmsnorm import RMSNorm
 from .layernorm import LayerNorm
 from .embedding import Embedding
 from .attn import Attention
+from .mla import MLA
+from .kda import KDA
 from .gated_delta_net import GatedDeltaNet
 from .gated_rmsnorm import GatedRMSNorm
 from .transformer import TransformerBlock, ParallelDecoderBlock
