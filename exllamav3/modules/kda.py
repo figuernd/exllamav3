@@ -202,16 +202,14 @@ class KDA(Module):
         self.f_a_proj = Linear(
             config, f"{key}.{key_f_a}",
             hidden_size, head_dim,
-            qmap=None,
-            out_dtype=torch.float
+            qmap=None
         )
         self.register_submodule(self.f_a_proj)
 
         self.f_b_proj = Linear(
             config, f"{key}.{key_f_b}",
             head_dim, self.projection_size,
-            qmap=None,
-            out_dtype=torch.float
+            qmap=None
         )
         self.register_submodule(self.f_b_proj)
 
@@ -219,16 +217,14 @@ class KDA(Module):
         self.g_a_proj = Linear(
             config, f"{key}.{key_g_a}",
             hidden_size, head_dim,
-            qmap=None,
-            out_dtype=torch.float
+            qmap=None
         )
         self.register_submodule(self.g_a_proj)
 
         self.g_b_proj = Linear(
             config, f"{key}.{key_g_b}",
             head_dim, self.projection_size,
-            qmap=None,
-            out_dtype=torch.float
+            qmap=None
         )
         self.register_submodule(self.g_b_proj)
 
@@ -236,8 +232,7 @@ class KDA(Module):
         self.b_proj = Linear(
             config, f"{key}.{key_b}",
             hidden_size, num_heads,
-            qmap=None,
-            out_dtype=torch.float
+            qmap=None
         )
         self.register_submodule(self.b_proj)
 
